@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+articles médias 24 (1).xlsx
+chromedriver.exe
+.streamlit/secrets.toml
