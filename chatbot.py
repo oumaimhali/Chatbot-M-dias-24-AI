@@ -21,11 +21,11 @@ EXCEL_URL = "https://docs.google.com/spreadsheets/d/1your_file_id/export?format=
 def load_data():
     try:
         # Essayer d'abord de charger depuis le fichier local
-        df = pd.read_excel("data/articles médias 24 (1).xlsx")
+        df = pd.read_excel("data/articles_medias_reduced.xlsx")
     except Exception as e:
         st.error(f"""
         Pour utiliser ce chatbot, vous devez :
-        1. Créer un fichier Excel nommé 'articles médias 24 (1).xlsx'
+        1. Créer un fichier Excel nommé 'articles_medias_reduced.xlsx'
         2. Le placer dans un dossier 'data' à la racine du projet
         3. Le fichier doit contenir les colonnes : 'Date', 'Titre', 'Contenu'
         
