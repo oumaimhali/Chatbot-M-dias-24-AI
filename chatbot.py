@@ -13,17 +13,36 @@ st.set_page_config(
     layout="wide"
 )
 
+# URL du fichier Excel (à remplacer par votre lien de partage)
+EXCEL_URL = "https://docs.google.com/spreadsheets/d/1your_file_id/export?format=xlsx"
+
 # Fonction pour charger et préparer les données
 @st.cache_data
 def load_data():
-    df = pd.read_excel("articles médias 24 (1).xlsx")
-    # Conversion de la colonne Date en datetime si elle ne l'est pas déjà
+    try:
+        # Essayer d'abord de charger depuis le fichier local
+        df = pd.read_excel("data/articles médias 24 (1).xlsx")
+    except Exception as e:
+        st.error(f"""
+        Pour utiliser ce chatbot, vous devez :
+        1. Créer un fichier Excel nommé 'articles médias 24 (1).xlsx'
+        2. Le placer dans un dossier 'data' à la racine du projet
+        3. Le fichier doit contenir les colonnes : 'Date', 'Titre', 'Contenu'
+        
+        Erreur détaillée : {str(e)}
+        """)
+        return None
+    
+    # Conversion de la colonne Date en datetime
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
     return df.sort_values('Date', ascending=True)
 
 # Fonction pour trouver les articles pertinents avec filtrage par date
 def find_relevant_articles(query, df, start_date=None, end_date=None):
+    if df is None:
+        return []
+        
     query = query.lower()
     scores = []
     
@@ -111,14 +130,9 @@ def generate_synthesis(articles):
 def main():
     st.title("💬 Assistant Articles Médias Intelligent")
     
-    if not openai.api_key:
-        st.error("⚠️ La clé API OpenAI n'est pas configurée. Veuillez la définir dans les secrets Streamlit")
-        return
-
-    try:
-        df = load_data()
-    except Exception as e:
-        st.error(f"Erreur lors du chargement des données : {str(e)}")
+    # Chargement des données
+    df = load_data()
+    if df is None:
         return
 
     # Interface utilisateur
