@@ -8,8 +8,8 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Configuration de la page Streamlit
 st.set_page_config(
-    page_title="Assistant Conversationnel",
-    page_icon="💬",
+    page_title="Assistant Médias 24",
+    page_icon="📰",
     layout="wide"
 )
 
@@ -43,83 +43,62 @@ def find_relevant_articles(query, df):
             scores.append((idx, total_score))
     
     scores.sort(key=lambda x: x[1], reverse=True)
-    return [(df.loc[idx], score) for idx, score in scores[:3]]  # Top 3 articles les plus pertinents
-
-# Initialisation de l'historique des messages
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": """Tu es un assistant conversationnel intelligent qui a accès à une base d'articles de presse.
-        Tu dois :
-        1. Être amical et naturel dans tes réponses
-        2. Utiliser les articles comme source d'information quand c'est pertinent
-        3. Pouvoir aussi répondre à des questions générales
-        4. Maintenir une conversation fluide
-        5. Si la question porte sur l'actualité ou l'économie, chercher dans les articles
-        6. Pour les autres sujets, répondre de manière générale
-        
-        Réponds toujours en français et de manière naturelle."""}
-    ]
+    return [(df.loc[idx], score) for idx, score in scores]  # Retourner tous les articles pertinents
 
 # Titre de l'application
-st.title("💬 Assistant Conversationnel Intelligent")
+st.title("📰 Assistant Médias 24")
+st.write("Je base mes réponses uniquement sur les articles de Médias 24.")
 
 # Chargement des données
 df = load_data()
 
 # Zone de texte pour la saisie de l'utilisateur
-user_input = st.text_input("Discutons ! Je peux vous parler de l'actualité ou d'autres sujets :", key="user_input")
+user_input = st.text_input("Posez votre question sur l'actualité :", key="user_input")
 
 # Traitement de la requête
 if user_input:
-    # Ajout du message de l'utilisateur à l'historique
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    
     # Recherche des articles pertinents
     relevant_articles = find_relevant_articles(user_input, df)
     
-    try:
-        if relevant_articles:
-            # Si des articles pertinents sont trouvés, les inclure dans le contexte
-            context = "Pour répondre à cette question, voici des articles pertinents :\n\n"
-            for article, score in relevant_articles:
-                context += f"Date: {article['Date'].strftime('%d/%m/%Y')}\n"
-                context += f"Titre: {article['Titre']}\n"
-                context += f"Contenu: {article['Contenu']}\n\n"
+    if relevant_articles:
+        # Affichage des articles trouvés
+        st.write("---")
+        st.subheader("Articles pertinents :")
+        
+        for article, score in sorted(relevant_articles, key=lambda x: x[0]['Date'], reverse=True):
+            with st.expander(f"📰 {article['Date'].strftime('%d/%m/%Y')} - {article['Titre']}"):
+                st.write(f"**Date** : {article['Date'].strftime('%d/%m/%Y')}")
+                st.write(f"**Titre** : {article['Titre']}")
+                st.write(f"**Contenu** : {article['Contenu']}")
+        
+        # Préparation du contexte pour la réponse
+        context = "Voici les articles pertinents de Médias 24 :\n\n"
+        for article, score in relevant_articles:
+            context += f"Date: {article['Date'].strftime('%d/%m/%Y')}\n"
+            context += f"Titre: {article['Titre']}\n"
+            context += f"Contenu: {article['Contenu']}\n\n"
+        
+        context += f"\nQuestion : {user_input}\n"
+        context += "Fais une synthèse précise basée uniquement sur ces articles. Cite les dates et titres des articles utilisés."
+        
+        try:
+            # Génération de la synthèse
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Tu es un expert en analyse d'articles de Médias 24. Base tes réponses UNIQUEMENT sur les articles fournis. Si une information n'est pas dans les articles, dis-le clairement."},
+                    {"role": "user", "content": context}
+                ],
+                max_tokens=1000,
+                temperature=0.7
+            )
             
-            context += f"\nQuestion de l'utilisateur : {user_input}\n"
-            context += "Réponds de manière naturelle et conversationnelle, en utilisant ces informations si elles sont pertinentes."
+            # Affichage de la synthèse
+            st.write("---")
+            st.subheader("Synthèse :")
+            st.write(response.choices[0].message['content'])
             
-            messages = [
-                {"role": "system", "content": "Tu es un assistant conversationnel amical qui a accès à des articles de presse. Utilise ces informations naturellement dans la conversation quand c'est pertinent."},
-                {"role": "user", "content": context}
-            ]
-        else:
-            # Si pas d'articles pertinents, conversation normale
-            messages = st.session_state.messages + [{"role": "user", "content": user_input}]
-        
-        # Obtention de la réponse
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            max_tokens=1000,
-            temperature=0.7
-        )
-        
-        # Ajout de la réponse à l'historique
-        assistant_response = response.choices[0].message['content']
-        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-        
-    except Exception as e:
-        st.error(f"Erreur lors de la génération de la réponse : {str(e)}")
-
-# Affichage de l'historique des messages
-st.write("---")
-st.subheader("Notre conversation :")
-for message in st.session_state.messages[1:]:  # Skip the system message
-    if message["role"] == "user":
-        st.write("👤 Vous :")
-        st.write(message["content"])
+        except Exception as e:
+            st.error(f"Erreur lors de la génération de la synthèse : {str(e)}")
     else:
-        st.write("🤖 Assistant :")
-        st.write(message["content"])
-    st.write("---")
+        st.warning("Je ne trouve pas d'articles pertinents sur ce sujet dans la base de Médias 24. Essayez une autre question ou reformulez votre demande.")
