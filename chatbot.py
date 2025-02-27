@@ -8,18 +8,9 @@ from datetime import datetime
 import re
 from typing import List, Dict
 from collections import defaultdict
-from pyngrok import ngrok
 
 # Configuration de la page Streamlit (doit être en premier)
 st.set_page_config(page_title="Assistant Médias 24", page_icon="🗞️", layout="wide")
-
-# Configuration ngrok
-try:
-    public_url = ngrok.connect(port=8501)
-    st.write(f"📢 Application accessible publiquement sur : {public_url}")
-except Exception as e:
-    st.error(f"Erreur lors de la configuration de ngrok: {str(e)}")
-    st.error("L'application reste accessible en local uniquement")
 
 # Désactiver les avertissements SSL
 urllib3.disable_warnings()
