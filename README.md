@@ -1,27 +1,55 @@
-# Chatbot Articles Médias
+# Chatbot Médias 24 AI
 
-Un chatbot intelligent capable de synthétiser et d'analyser des articles de presse.
+Un chatbot intelligent alimenté par l'IA pour interagir avec les articles de Médias 24.
 
 ## Fonctionnalités
 
-- Synthèse thématique chronologique
-- Résumé détaillé par sujet
-- Filtrage par date
-- Analyse intelligente avec GPT-3.5
+- Interface utilisateur conviviale avec Streamlit
+- Recherche intelligente d'articles avec Elasticsearch
+- Génération de réponses naturelles avec OpenAI GPT
+- Analyse et résumé d'articles
+- Extraction de chronologies et d'événements clés
 
 ## Installation
 
-1. Installer les dépendances :
+1. Cloner le dépôt :
+```bash
+git clone https://github.com/votre-username/Chatbot-Medias-24-AI.git
+cd Chatbot-Medias-24-AI
+```
+
+2. Installer les dépendances :
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Configurer la clé API OpenAI dans un fichier .env :
-```
-OPENAI_API_KEY=votre_clé_api
+3. Configurer les variables d'environnement :
+Créez un fichier `.env` avec :
+```env
+OPENAI_API_KEY=votre_clé_api_openai
+ELASTIC_URL=votre_url_elasticsearch
+ELASTIC_API_KEY=votre_clé_api_elasticsearch
 ```
 
-3. Lancer l'application :
+## Utilisation
+
+Lancer l'application :
 ```bash
 streamlit run chatbot.py
 ```
+
+## Déploiement
+
+L'application est déployée sur Streamlit Cloud et accessible à :
+[https://chatbot-medias-24-ai.streamlit.app](https://chatbot-medias-24-ai.streamlit.app)
+
+## Technologies
+
+- [Streamlit](https://streamlit.io/) - Interface utilisateur
+- [OpenAI GPT](https://openai.com/) - Génération de réponses
+- [Elasticsearch](https://www.elastic.co/) - Recherche d'articles
+- [Python](https://www.python.org/) - Langage de programmation
+
+## Auteur
+
+- Oumaima Halim

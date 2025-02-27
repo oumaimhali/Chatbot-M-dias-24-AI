@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistant Médias 24</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        .message {
+            max-width: 80%;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #f5f5f5;
+            margin-right: auto;
+        }
+        .sources-container {
+            font-size: 0.9em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">Assistant Médias 24</h1>
+                <p class="text-gray-600">Je base mes réponses uniquement sur les articles de Médias 24</p>
+            </header>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div id="chat-container" class="chat-container overflow-y-auto mb-6">
+                    <!-- Les messages seront ajoutés ici -->
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="user-input" 
+                           class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Posez votre question ici...">
+                    <button id="send-button" 
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Envoyer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        function addMessage(content, isUser = false, sources = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            
+            const textDiv = document.createElement('div');
+            textDiv.textContent = content;
+            messageDiv.appendChild(textDiv);
+
+            if (sources && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'sources-container';
+                sourcesDiv.innerHTML = '<strong>Sources:</strong><br>' + 
+                    sources.map(article => 
+                        `<a href="${article.url}" target="_blank" class="text-blue-600 hover:underline">
+                            ${article.title}
+                        </a> (${article.published_at})`
+                    ).join('<br>');
+                messageDiv.appendChild(sourcesDiv);
+            }
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Afficher le message de l'utilisateur
+            addMessage(message, true);
+            userInput.value = '';
+
+            try {
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur réseau');
+                }
+
+                const data = await response.json();
+                addMessage(data.response, false, data.articles);
+            } catch (error) {
+                addMessage("Désolé, une erreur s'est produite. Veuillez réessayer.", false);
+                console.error('Erreur:', error);
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Vérifier la connexion au démarrage
+        fetch(`${API_URL}/health`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'healthy' && data.elasticsearch === 'connected') {
+                    addMessage("👋 Bonjour ! Je suis prêt à répondre à vos questions sur l'actualité marocaine.", false);
+                } else {
+                    addMessage("⚠️ La connexion à la base de données n'est pas disponible pour le moment.", false);
+                }
+            })
+            .catch(() => {
+                addMessage("⚠️ Le service n'est pas disponible pour le moment.", false);
+            });
+    </script>
+</body>
+</html>
