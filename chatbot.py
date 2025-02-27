@@ -21,21 +21,21 @@ if 'OPENAI_API_KEY' not in st.secrets:
 client = OpenAI(api_key=st.secrets['OPENAI_API_KEY'])
 
 # Configuration Elasticsearch
-ELASTIC_URL = st.secrets.get('ELASTIC_URL', '')
-ELASTIC_API_KEY = st.secrets.get('ELASTIC_API_KEY', '')
+ES_URL = st.secrets.get('ELK_ENDPOINT', 'http://esmedias24.cloud.atlashoster.net:9200/')
+ES_INDEX = st.secrets.get('ELK_INDEX', 'idxfnl')
+ES_USERNAME = st.secrets.get('ELK_USERNAME', 'elastic')
+ES_PASSWORD = st.secrets.get('ELK_PASSWORD', '')
 
-if not ELASTIC_URL or not ELASTIC_API_KEY:
+if not ES_PASSWORD:
     st.error("Veuillez configurer les paramètres Elasticsearch dans les secrets Streamlit.")
     st.stop()
 
+# Configuration de l'authentification Elasticsearch
+ES_AUTH = (ES_USERNAME, ES_PASSWORD)
+ES_TIMEOUT = 30  # Timeout en secondes
+
 # Désactiver les avertissements SSL
 urllib3.disable_warnings()
-
-# Configuration
-ES_URL = ELASTIC_URL  # Changé pour HTTPS
-ES_INDEX = "idxfnl"
-ES_AUTH = ("elastic", ELASTIC_API_KEY)
-ES_TIMEOUT = 30  # Timeout en secondes
 
 def test_elasticsearch_connection():
     """Test la connexion à Elasticsearch"""
