@@ -9,25 +9,33 @@ import re
 from typing import List, Dict
 from collections import defaultdict
 
-# Configuration de la page Streamlit (doit être en premier)
+# Configuration de la page Streamlit
 st.set_page_config(page_title="Assistant Médias 24", page_icon="🗞️", layout="wide")
+
+# Configuration des clés API
+if 'OPENAI_API_KEY' not in st.secrets:
+    st.error("Veuillez configurer votre clé API OpenAI dans les secrets Streamlit.")
+    st.stop()
+
+# Configuration d'OpenAI
+client = OpenAI(api_key=st.secrets['OPENAI_API_KEY'])
+
+# Configuration Elasticsearch
+ELASTIC_URL = st.secrets.get('ELASTIC_URL', '')
+ELASTIC_API_KEY = st.secrets.get('ELASTIC_API_KEY', '')
+
+if not ELASTIC_URL or not ELASTIC_API_KEY:
+    st.error("Veuillez configurer les paramètres Elasticsearch dans les secrets Streamlit.")
+    st.stop()
 
 # Désactiver les avertissements SSL
 urllib3.disable_warnings()
 
 # Configuration
-ES_URL = "https://esmedias24.cloud.atlashoster.net:9200"  # Changé pour HTTPS
+ES_URL = ELASTIC_URL  # Changé pour HTTPS
 ES_INDEX = "idxfnl"
-ES_AUTH = ("elastic", "Zo501nQV7AKxxxxxx")
+ES_AUTH = ("elastic", ELASTIC_API_KEY)
 ES_TIMEOUT = 30  # Timeout en secondes
-
-# Configuration OpenAI
-try:
-    api_key = st.secrets["OPENAI_API_KEY"]
-    client = OpenAI(api_key=api_key)
-except Exception as e:
-    st.error(f"Erreur de configuration: {str(e)}")
-    st.error("Veuillez configurer votre clé API dans .streamlit/secrets.toml")
 
 def test_elasticsearch_connection():
     """Test la connexion à Elasticsearch"""
@@ -175,70 +183,40 @@ def analyze_articles(articles: List[Dict]) -> Dict:
     return analysis
 
 def get_ai_response(query: str, articles: List[Dict]) -> str:
-    """Génère une réponse détaillée et structurée"""
-    if not articles:
-        return "Je n'ai pas trouvé d'articles pertinents pour répondre à votre question."
-    
+    """Génère une réponse basée sur les articles trouvés"""
     try:
-        # Analyse des articles
-        analysis = analyze_articles(articles)
-        
-        # Création du contexte
-        context = f"""Informations sur les articles trouvés:
-1. Période couverte: du {analysis['date_range']['start']} au {analysis['date_range']['end']}
-2. Nombre d'articles: {len(articles)}
-3. Sources: {len(analysis['sources'])} articles uniques
+        # Préparation du contexte
+        context = "Voici les articles pertinents trouvés :\n\n"
+        for i, article in enumerate(articles, 1):
+            title = article.get('title', 'Sans titre')
+            content = article.get('content', '')
+            date = article.get('date', '')
+            context += f"Article {i}:\nTitre: {title}\nDate: {date}\nContenu: {content}\n\n"
 
-Articles par ordre chronologique:
-"""
-        
-        for date, date_articles in sorted(analysis["timeline"].items()):
-            context += f"\n{date}:\n"
-            for article in date_articles:
-                context += f"- {article['title']}\n"
-                context += f"  {article['content'][:200]}...\n"
+        # Instruction pour le modèle
+        system_prompt = """Tu es un assistant spécialisé dans l'analyse d'articles de Médias24. 
+        Utilise les articles fournis pour répondre aux questions de manière précise et structurée.
+        Si une chronologie est demandée, présente les événements de manière chronologique.
+        Cite toujours tes sources en référençant les articles.
+        Si tu ne trouves pas l'information dans les articles fournis, dis-le clairement."""
 
-        messages = [
-            {
-                "role": "system",
-                "content": """Tu es l'Assistant Médias 24, un expert en analyse d'actualités marocaines.
-                Ton objectif est de fournir des réponses détaillées, précises et bien structurées.
-                
-                Directives pour tes réponses:
-                1. Commence par un bref résumé de la situation
-                2. Présente les événements de manière chronologique
-                3. Mets en évidence les dates et faits importants
-                4. Identifie les tendances et développements clés
-                5. Fournis une analyse approfondie
-                6. Cite tes sources avec précision
-                7. Conclus avec une synthèse globale
-                
-                Format de réponse:
-                Résumé
-                Chronologie des événements
-                Points clés
-                Analyse
-                Sources
-                """
-            },
-            {
-                "role": "user",
-                "content": f"Question: {query}\n\nContexte:\n{context}"
-            }
-        ]
-
+        # Appel à l'API OpenAI
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo-16k",
-            messages=messages,
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Question: {query}\n\nContexte: {context}"}
+            ],
             temperature=0.7,
-            max_tokens=2000
+            max_tokens=1000
         )
-        
+
+        # Extraction de la réponse
         return response.choices[0].message.content
 
     except Exception as e:
-        st.error(f"Erreur lors de la génération de la réponse: {str(e)}")
-        return "Désolé, je ne peux pas générer une réponse pour le moment."
+        st.error(f"Erreur lors de la génération de la réponse : {str(e)}")
+        return "Désolé, je n'ai pas pu générer une réponse. Veuillez réessayer."
 
 # Interface Streamlit
 st.title("Assistant Médias 24 ")
