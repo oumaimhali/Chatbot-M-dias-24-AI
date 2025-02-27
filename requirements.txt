@@ -3,3 +3,4 @@ pandas
 openpyxl
 python-dotenv
 openai==0.28.0
+elasticsearch-py==8.11.0
